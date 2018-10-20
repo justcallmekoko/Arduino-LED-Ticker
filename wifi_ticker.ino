@@ -11,7 +11,7 @@ ESP8266WebServer server(80); // Initialize web server
 
 
 // CSS Colors
-String color1 = "#c10000"; // Accent
+String color1 = "#fff"; // Accent
 String color2 = "#000000"; // Background
 String color3 = "#2f3136"; // Bar
 String color4 = "#bfbfbb"; // Text
@@ -20,6 +20,7 @@ String color5 = "#ffe500"; // Important Bar
 
 // Ticker Settings
 String ticker_message = "Hello, World!";
+bool run_display = true;
 int width = 64;
 int height = 8;
 
@@ -39,8 +40,8 @@ const uint16_t colors[] = {
 
 String GenSettingsHTML(bool doSome)
 {
-  String settings_html = "<title>ROTA</title>\n"
-                      "<font face=\"verdana\">\n"
+  String settings_html = "<title>Arduino Ticker</title>\n"
+                      "<font face=\"Courier New\">\n"
                       "<style type=\"text/css\">\n"
                       "    #submit {\n"
                       "        background-color: " + color1 + ";\n"
@@ -58,7 +59,7 @@ String GenSettingsHTML(bool doSome)
                       "        border: none;\n"
                       "        background: cyan;\n"
                       "        box-shadow: 0px 0px 1px #777;\n"
-                      "  color: black;\n"
+                      "        color: black;\n"
                       "    }\n"
                       "    body\n"
                       "    {\n"
@@ -163,17 +164,22 @@ String GenSettingsHTML(bool doSome)
                       "        border: none;\n"
                       "    }\n"
                       "</style>\n"
-                      "<h1 class=\"header\" data-translate=\"home\">Home</h1>"
                       "<br>"
                       "<html><body>\n"
+                      "    <br><br><br><br>"
                       "    <div style='margin-left: 10rem; margin-right: 10rem' class=\"column\">\n"
                       "        <form name='frm' method='get'>\n"
-                      "            <center><span style=\"font-size: +100px\"/>WiFi Ticker</span></center>"
+                      "            <center><span style=\"font-size: +14px\"/>WiFi Ticker</span></center>"
                       "            <br><br>"
-                      "            <h2 style='font-size: +24px' class=\"header\" data-translate=\"settings\">Ticker Message</h2>\n"
                       "            <center><textarea style='width: 100%' type='text' name='ticker_message' placeholder='Ticker Message' col=30 rows=5> </textarea></center><br>"
                       "            <input type='submit' id='submit' value='Apply'>\n"
                       "        </form>\n"
+                      "        <form name='frm2' action='/on' method='get'>\n"
+                      "            <input type='submit' id='submit' value='Turn Ticker On'>\n"
+                      "        </form>"
+                      "        <form name='frm3' action='/off' method='get'>\n"
+                      "            <input type='submit' id='submit' value='Turn Ticker Off'>\n"
+                      "        </form>"
                       "    </div>\n"
                       "</body></html>\n";
 
@@ -187,8 +193,84 @@ String GenSettingsHTML(bool doSome)
 void SetServerBehavior()
 {  
   server.on("/", HandleClient);
+
+  server.on("/on", AdjustOn);
+
+  server.on("/off", AdjustOff);
   
   server.begin();
+}
+
+
+
+
+
+void AdjustOn()
+{
+  //if (authenticated)
+  //{
+  if (server.args() > 0)
+  {
+    Serial.println("Server arguments received");
+    
+    for (uint8_t i = 0; i < server.args(); i++)
+    {
+      //Serial.println(server.argName(i));
+
+      // BRANCH STATEMENTS TO CHANGE CONFIGURATION
+      if (server.argName(i) == "ticker_message" && server.arg(i).length() > 0)
+      {
+        ticker_message = server.arg(i);
+        Serial.print("New Ticker Message: ");
+        Serial.println(server.arg(i));
+      }
+    }
+  }
+  
+  run_display = true;
+
+  String settings_html = GenSettingsHTML(true);
+  Serial.print("settings_html.length() -> ");
+  Serial.println(settings_html.length());
+  
+  server.send(200, "text/html", settings_html);
+  Serial.println("-----------------------------------------");
+}
+
+
+
+
+
+void AdjustOff()
+{
+  //if (authenticated)
+  //{
+  if (server.args() > 0)
+  {
+    Serial.println("Server arguments received");
+    
+    for (uint8_t i = 0; i < server.args(); i++)
+    {
+      //Serial.println(server.argName(i));
+
+      // BRANCH STATEMENTS TO CHANGE CONFIGURATION
+      if (server.argName(i) == "ticker_message" && server.arg(i).length() > 0)
+      {
+        ticker_message = server.arg(i);
+        Serial.print("New Ticker Message: ");
+        Serial.println(server.arg(i));
+      }
+    }
+  }
+  
+  run_display = false;
+
+  String settings_html = GenSettingsHTML(true);
+  Serial.print("settings_html.length() -> ");
+  Serial.println(settings_html.length());
+  
+  server.send(200, "text/html", settings_html);
+  Serial.println("-----------------------------------------");
 }
 
 
@@ -241,7 +323,7 @@ bool startAP()
 {
   Serial.println("Configuring Access Point...");
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("Ticker", "Password");
+  WiFi.softAP("Ticker", "password");
 
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
@@ -269,16 +351,24 @@ int mess_len = 0;
  
 void loop() {
   server.handleClient();
-  
-  matrix.fillScreen(0);
-  matrix.setCursor(x, 0);
-  matrix.print(ticker_message);
 
-  mess_len = ticker_message.length() * -6;
- 
-  if(--x < mess_len) {
-    x = matrix.width();
+  if (run_display)
+  {
+    matrix.fillScreen(0);
+    matrix.setCursor(x, 0);
+    matrix.print(ticker_message);
+  
+    mess_len = ticker_message.length() * -6;
+   
+    if(--x < mess_len) {
+      x = matrix.width();
+    }
+    matrix.show();
+    delay(45);
   }
-  matrix.show();
-  delay(45);
+  else
+  {
+    matrix.fillScreen(0);
+    matrix.show();
+  }
 }
